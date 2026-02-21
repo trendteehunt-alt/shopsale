@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopSale - Săn Deal Mỗi Ngày</title>
+    <meta name="description" content="Website tổng hợp các deal hời, sản phẩm giá tốt từ Shopee, cập nhật liên tục mỗi ngày.">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        shopee: '#EE4D2D',
+                        'shopee-dark': '#d73211',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- PapaParse for CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <!-- Alpine.js for Reactivity -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        [x-cloak] { display: none !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans" x-data="shopApp()" x-init="init()">
+
+    <!-- Top Header -->
+    <div class="bg-white border-b border-gray-100 py-2 hidden sm:block">
+        <div class="max-w-6xl mx-auto px-4 flex justify-between items-center text-xs text-gray-500">
+            <div class="flex gap-4">
+                <a href="https://www.facebook.com/hoangvuai.love" target="_blank" class="flex items-center gap-1 hover:text-shopee transition-colors">
+                    <i data-lucide="facebook" class="w-3 h-3"></i> Facebook
+                </a>
+                <a href="https://zalo.me/g/wxfycq021" target="_blank" class="flex items-center gap-1 hover:text-shopee transition-colors">
+                    <span class="font-bold">Z</span> Zalo Group
+                </a>
+            </div>
+            <div class="flex items-center gap-1">
+                <i data-lucide="phone-call" class="w-3 h-3"></i> Hotline: 0949.731.236 (Hoàng Vũ AI)
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Navigation -->
+    <header class="bg-white sticky top-0 z-50 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2 cursor-pointer" @click="currentCategory = 'Tất Cả'">
+                <h1 class="text-2xl font-black text-shopee tracking-tighter italic uppercase">SHOPSALE</h1>
+            </div>
+
+            <!-- Desktop Nav -->
+            <nav class="hidden md:flex items-center gap-6 overflow-x-auto no-scrollbar">
+                <template x-for="cat in categories" :key="cat">
+                    <button
+                        @click="currentCategory = cat"
+                        class="text-sm font-semibold transition-colors whitespace-nowrap"
+                        :class="currentCategory === cat ? 'text-shopee' : 'text-gray-600 hover:text-shopee'"
+                        x-text="cat"
+                    ></button>
+                </template>
+            </nav>
+
+            <!-- Mobile Menu Toggle -->
+            <button class="md:hidden text-gray-600" @click="isMenuOpen = !isMenuOpen">
+                <i x-show="!isMenuOpen" data-lucide="menu"></i>
+                <i x-show="isMenuOpen" data-lucide="x"></i>
+            </button>
+        </div>
+
+        <!-- Mobile Nav -->
+        <div x-show="isMenuOpen" x-cloak x-transition
+             class="md:hidden bg-white border-t border-gray-100 overflow-hidden">
+            <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col gap-4">
+                <template x-for="cat in categories" :key="cat">
+                    <button
+                        @click="currentCategory = cat; isMenuOpen = false"
+                        class="text-left text-sm font-semibold py-2"
+                        :class="currentCategory === cat ? 'text-shopee' : 'text-gray-600'"
+                        x-text="cat"
+                    ></button>
+                </template>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section x-show="currentCategory === 'Tất Cả'" class="bg-gradient-to-br from-shopee to-shopee-dark text-white py-16 md:py-24">
+        <div class="max-w-6xl mx-auto px-4 text-center">
+            <h2 class="text-4xl md:text-6xl font-black mb-6 tracking-tight">
+                GIẢM GIÁ MỖI NGÀY <br class="hidden md:block"> MUA LÀ TIẾT KIỆM
+            </h2>
+            <p class="text-lg md:text-xl opacity-90 mb-10 max-w-2xl mx-auto">
+                Nơi tổng hợp những sản phẩm đáng mua nhất với giá ưu đãi tốt nhất trên Shopee.
+            </p>
+            <button
+                @click="document.getElementById('products').scrollIntoView({ behavior: 'smooth' })"
+                class="bg-white text-shopee px-8 py-4 rounded-full font-bold text-lg shadow-xl hover:bg-gray-100 transition-all active:scale-95"
+            >
+                Xem Deal Hot Ngay
+            </button>
+        </div>
+    </section>
+
+    <!-- Product List -->
+    <main class="flex-grow py-12 bg-gray-50" id="products">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex items-center justify-between mb-8">
+                <h3 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    <i data-lucide="flame" class="text-shopee"></i> 
+                    <span x-text="currentCategory === 'Tất Cả' ? 'Tất Cả Sản Phẩm' : currentCategory"></span>
+                </h3>
+                <span class="text-sm text-gray-500" x-text="filteredProducts().length + ' sản phẩm'"></span>
+            </div>
+
+            <!-- Loading State -->
+            <div x-show="loading" class="flex flex-col items-center justify-center py-20 gap-4">
+                <div class="w-10 h-10 border-4 border-shopee border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-gray-500 animate-pulse">Đang tải dữ liệu từ Google Sheets...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div x-show="!loading && filteredProducts().length === 0" class="text-center py-20 text-gray-500">
+                Chưa có sản phẩm nào trong danh mục này.
+            </div>
+
+            <!-- Grid -->
+            <div x-show="!loading" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                <template x-for="product in filteredProducts()" :key="product.id">
+                    <div class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-gray-100 group">
+                        <div class="relative aspect-square overflow-hidden bg-gray-100">
+                            <img :src="product.imageUrl" :alt="product.name"
+                                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                 referrerpolicy="no-referrer">
+                            
+                            <!-- Badge -->
+                            <div x-show="product.badge" 
+                                 class="absolute top-2 left-2 bg-shopee text-white text-[10px] font-bold px-2 py-1 rounded-full z-10"
+                                 x-text="product.badge"></div>
+                            
+                            <!-- Discount -->
+                            <div x-show="product.oldPrice && product.oldPrice > product.price"
+                                 class="absolute top-2 right-2 bg-yellow-400 text-gray-900 text-[10px] font-bold px-2 py-1 rounded-full z-10"
+                                 x-text="'-' + Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100) + '%'"></div>
+                        </div>
+                        <div class="p-4">
+                            <h4 class="text-sm font-medium text-gray-800 line-clamp-2 mb-2 min-h-[40px]" x-text="product.name"></h4>
+                            <div class="flex flex-col gap-1">
+                                <span class="text-shopee font-bold text-lg" x-text="formatPrice(product.price)"></span>
+                                <span x-show="product.oldPrice" class="text-xs text-gray-400 line-through" x-text="formatPrice(product.oldPrice)"></span>
+                            </div>
+                            <a :href="product.affiliateUrl" target="_blank"
+                               class="mt-4 w-full bg-shopee/10 text-shopee hover:bg-shopee hover:text-white py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2">
+                                Mua Ngay <i data-lucide="external-link" class="w-3 h-3"></i>
+                            </a>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-300 py-12">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+                <div>
+                    <h1 class="text-2xl font-black text-white tracking-tighter italic mb-4 uppercase">SHOPSALE</h1>
+                    <p class="text-sm leading-relaxed opacity-70">
+                        Blog tổng hợp deal Shopee, giúp bạn săn được những sản phẩm chất lượng với giá hời nhất mỗi ngày.
+                    </p>
+                </div>
+                <div>
+                    <h4 class="text-white font-bold mb-4">Danh Mục</h4>
+                    <ul class="space-y-2 text-sm">
+                        <template x-for="cat in categories.slice(0, 6)" :key="cat">
+                            <li>
+                                <button @click="currentCategory = cat" class="hover:text-shopee transition-colors" x-text="cat"></button>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-bold mb-4">Liên Hệ</h4>
+                    <ul class="space-y-3 text-sm">
+                        <li class="flex items-center gap-2">
+                            <i data-lucide="phone-call" class="w-4 h-4 text-shopee"></i> 0949.731.236 (Hoàng Vũ AI)
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i data-lucide="facebook" class="w-4 h-4 text-shopee"></i> Facebook Hoàng Vũ AI
+                        </li>
+                        <li class="text-xs opacity-50 italic">
+                            *Website có sử dụng link affiliate Shopee.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-8 text-center text-xs opacity-50">
+                <p>© 2025 ShopSale - Săn Deal Mỗi Ngày. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function shopApp() {
+            return {
+                products: [],
+                categories: ['Tất Cả'],
+                currentCategory: 'Tất Cả',
+                loading: true,
+                isMenuOpen: false,
+                sheetUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQhoGPagP_GAX59ciC3fEc2a2Ol1_Brf8jZIl4BRW0pS46Bef2rf2hM5NBCFMumAP2ivjqmkIV8hjbf/pub?gid=0&single=true&output=csv',
+
+                async init() {
+                    this.fetchData();
+                    // Initialize Lucide icons after Alpine renders
+                    this.$watch('loading', () => {
+                        this.$nextTick(() => lucide.createIcons());
+                    });
+                    this.$watch('currentCategory', () => {
+                        this.$nextTick(() => lucide.createIcons());
+                    });
+                    lucide.createIcons();
+                },
+
+                async fetchData() {
+                    this.loading = true;
+                    try {
+                        const response = await fetch(this.sheetUrl);
+                        const csvText = await response.text();
+                        
+                        Papa.parse(csvText, {
+                            header: true,
+                            skipEmptyLines: true,
+                            complete: (results) => {
+                                this.products = results.data.map((row, index) => {
+                                    const parsePrice = (val) => {
+                                        if (!val) return 0;
+                                        const cleaned = String(val).replace(/\./g, '').replace(/,/g, '');
+                                        return parseInt(cleaned, 10) || 0;
+                                    };
+
+                                    const categoryRaw = row['Hạng mục (Category)'] || '';
+                                    let category = 'Khác';
+                                    if (categoryRaw.includes('|')) {
+                                        category = categoryRaw.split('|')[0].trim();
+                                    } else {
+                                        category = categoryRaw || 'Khác';
+                                    }
+
+                                    return {
+                                        id: index,
+                                        name: row['Tên sản phẩm'],
+                                        imageUrl: row['Link ảnh sản phẩm'],
+                                        oldPrice: parsePrice(row['Giá gốc']),
+                                        price: parsePrice(row['Giá giảm']),
+                                        badge: row['Nhãn'],
+                                        affiliateUrl: row['Link Affiliate Shopee'],
+                                        category: category
+                                    };
+                                });
+
+                                // Extract unique categories
+                                const uniqueCats = [...new Set(this.products.map(p => p.category))];
+                                this.categories = ['Tất Cả', ...uniqueCats];
+                                this.loading = false;
+                                this.$nextTick(() => lucide.createIcons());
+                            }
+                        });
+                    } catch (error) {
+                        console.error('Error fetching data:', error);
+                        this.loading = false;
+                    }
+                },
+
+                filteredProducts() {
+                    if (this.currentCategory === 'Tất Cả') return this.products;
+                    return this.products.filter(p => p.category === this.currentCategory);
+                },
+
+                formatPrice(price) {
+                    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+
